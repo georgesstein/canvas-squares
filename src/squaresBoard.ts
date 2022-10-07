@@ -10,6 +10,7 @@ type Options = {
   canvasOutlineStyle: string
   squareSize: number
   squareBorderWidth: number
+  defaultSquareStrokeColor: string
   selectedSquareStrokeColor: string
 }
 
@@ -18,6 +19,7 @@ const DEFAULT_OPTIONS: Options = {
   canvasOutlineStyle: '1px dashed #000',
   squareSize: 50,
   squareBorderWidth: 1,
+  defaultSquareStrokeColor: 'black',
   selectedSquareStrokeColor: 'red',
 }
 
@@ -70,12 +72,14 @@ export default class SquaresBoard {
 
     this.canvasEl.addEventListener('mousedown', (e) => {
       const isRightButtonClick = e.button === 2
+      const isLeftButtonClick = e.button === 0
       const cursorPosition = { x: e.offsetX, y: e.offsetY }
       const squareMatch = this.findSquareByPosition(cursorPosition)
 
       if (squareMatch === null) return null
 
       if (isRightButtonClick) this.removeSquare(squareMatch.square.id)
+      if (isLeftButtonClick) this.selectSquare(squareMatch.square.id)
     })
   }
 
@@ -104,6 +108,11 @@ export default class SquaresBoard {
     this.render()
   }
 
+  private selectSquare = (squareId: I.SquareId) => {
+    this.state.selectedSquareId = squareId
+    this.render()
+  }
+
   private removeSquare = (squareId: I.SquareId) => {
     this.state.squares.delete(squareId)
     this.render()
@@ -128,8 +137,9 @@ export default class SquaresBoard {
     return null
   }
 
-  private drawSquare = (position: { x: number; y: number }) => {
+  private drawSquare = (position: { x: number; y: number }, borderColor: string) => {
     this.ctx.lineWidth = this.options.squareBorderWidth
+    this.ctx.strokeStyle = borderColor
     this.ctx.strokeRect(position.x + 0.5, position.y + 0.5, this.options.squareSize, this.options.squareSize)
   }
 
@@ -142,7 +152,12 @@ export default class SquaresBoard {
       this.clear()
 
       this.state.squares.forEach((square) => {
-        this.drawSquare(square.position)
+        this.drawSquare(
+          square.position,
+          square.id === this.state.selectedSquareId
+            ? this.options.selectedSquareStrokeColor
+            : this.options.defaultSquareStrokeColor,
+        )
       })
 
       this.publishStateChange()
