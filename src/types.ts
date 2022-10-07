@@ -8,6 +8,7 @@ export type Position = {
 export type SquareDTO = {
   id: SquareId
   position: Position
+  size: number
 }
 
 export type SquareId = string & { __idFor: 'Square' }

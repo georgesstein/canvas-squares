@@ -1,6 +1,8 @@
 import cuid from 'cuid'
 import SquareComponent from './square'
 
+import * as utils from './utils'
+
 import * as I from './types'
 
 type Options = {
@@ -65,6 +67,16 @@ export default class SquaresBoard {
 
       this.addSquare(cursorPosition)
     })
+
+    this.canvasEl.addEventListener('mousedown', (e) => {
+      const isRightButtonClick = e.button === 2
+      const cursorPosition = { x: e.offsetX, y: e.offsetY }
+      const squareMatch = this.findSquareByPosition(cursorPosition)
+
+      if (squareMatch === null) return null
+
+      if (isRightButtonClick) this.removeSquare(squareMatch.square.id)
+    })
   }
 
   private mount = () => {
@@ -73,7 +85,7 @@ export default class SquaresBoard {
     this.canvasEl.style.outline = this.options.canvasOutlineStyle
 
     this.canvasEl.oncontextmenu = () => false
-    
+
     this.rootEl.append(this.canvasEl)
 
     this.clear()
@@ -85,10 +97,35 @@ export default class SquaresBoard {
     const square = new SquareComponent({
       id: cuid() as I.SquareId,
       position: position,
+      size: this.options.squareSize,
     })
 
     this.state.squares.set(square.id, square)
     this.render()
+  }
+
+  private removeSquare = (squareId: I.SquareId) => {
+    this.state.squares.delete(squareId)
+    this.render()
+  }
+
+  private findSquareByPosition = (p: { x: number; y: number }): { square: SquareComponent } | null => {
+    const squares = [...this.state.squares.values()]
+
+    for (let i = squares.length - 1; i >= 0; i--) {
+      const square = squares[i]
+
+      const isClickWithinSquareArea = utils.getIsPointWithinSquareArea({
+        point: { ...p },
+        square: { x: square.position.x, y: square.position.y, size: square.size },
+      })
+
+      if (isClickWithinSquareArea === false) continue
+
+      return { square }
+    }
+
+    return null
   }
 
   private drawSquare = (position: { x: number; y: number }) => {

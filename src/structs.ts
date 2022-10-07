@@ -9,6 +9,7 @@ export const Square: Struct<I.SquareDTO> = object({
     x: number(),
     y: number(),
   }),
+  size: number()
 })
 
 export const LocalStorageState: Struct<I.LocalStorageState> = object({
