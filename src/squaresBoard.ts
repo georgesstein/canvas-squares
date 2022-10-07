@@ -12,15 +12,17 @@ type Options = {
   squareBorderWidth: number
   defaultSquareStrokeColor: string
   selectedSquareStrokeColor: string
+  resizeStepOfMouseWheel: number
 }
 
 const DEFAULT_OPTIONS: Options = {
   canvasSize: { width: 500, height: 500 },
   canvasOutlineStyle: '1px dashed #000',
   squareSize: 50,
-  squareBorderWidth: 1,
+  squareBorderWidth: 2,
   defaultSquareStrokeColor: 'black',
   selectedSquareStrokeColor: 'red',
+  resizeStepOfMouseWheel: 4,
 }
 
 export default class SquaresBoard {
@@ -64,19 +66,45 @@ export default class SquaresBoard {
   private publishStateChange = () => this.stateSubscribers.forEach((callback) => callback(this.state))
 
   private addEventListeners = () => {
+    // create square
     this.canvasEl.addEventListener('dblclick', (e) => {
       const cursorPosition = { x: e.offsetX, y: e.offsetY }
+      const matchSquare = this.findSquareByPosition(cursorPosition)
+
+      if (matchSquare) return
 
       this.addSquare(cursorPosition)
     })
 
+    // resize selected square
+    this.canvasEl.addEventListener('wheel', (e) => {
+      if (this.state.selectedSquareId === null) return
+
+      const matchSquare = this.findSquareByPosition({ x: e.offsetX, y: e.offsetY })
+
+      if (matchSquare === null) return
+      if (matchSquare.square.id !== this.state.selectedSquareId) return
+
+      const isIncrement = e.deltaY > 0
+
+      this.resizeSquare({
+        square: matchSquare.square,
+        by: isIncrement ? this.options.resizeStepOfMouseWheel : this.options.resizeStepOfMouseWheel * -1,
+      })
+    })
+
+    // delete square
+    // select square
     this.canvasEl.addEventListener('mousedown', (e) => {
-      const isRightButtonClick = e.button === 2
-      const isLeftButtonClick = e.button === 0
+      const isRightButtonClick = e.buttons === 2
+      const isLeftButtonClick = e.buttons === 1
       const cursorPosition = { x: e.offsetX, y: e.offsetY }
       const squareMatch = this.findSquareByPosition(cursorPosition)
 
-      if (squareMatch === null) return null
+      if (squareMatch === null) {
+        this.unselectSquare()
+        return null
+      }
 
       if (isRightButtonClick) this.removeSquare(squareMatch.square.id)
       if (isLeftButtonClick) this.selectSquare(squareMatch.square.id)
@@ -113,8 +141,27 @@ export default class SquaresBoard {
     this.render()
   }
 
+  private unselectSquare = () => {
+    this.state.selectedSquareId = null
+    this.render()
+  }
+
   private removeSquare = (squareId: I.SquareId) => {
+    if (this.state.selectedSquareId === squareId) {
+      this.unselectSquare()
+    }
+
     this.state.squares.delete(squareId)
+    this.render()
+  }
+
+  private resizeSquare = (p: { square: SquareComponent; by: number }) => {
+    const updatedSize = p.square.size + p.by
+
+    // add min and max values to options
+    TODO: if (updatedSize <= 30 || updatedSize >= 150) return
+    if (this.canvasEl) p.square.size = updatedSize
+
     this.render()
   }
 
@@ -137,10 +184,18 @@ export default class SquaresBoard {
     return null
   }
 
-  private drawSquare = (position: { x: number; y: number }, borderColor: string) => {
+  private drawSquare = (position: { x: number; y: number }, borderColor: string, size: number) => {
     this.ctx.lineWidth = this.options.squareBorderWidth
     this.ctx.strokeStyle = borderColor
-    this.ctx.strokeRect(position.x + 0.5, position.y + 0.5, this.options.squareSize, this.options.squareSize)
+
+    const isLineWidthEvenValue = this.options.squareBorderWidth % 2 === 0
+
+    this.ctx.strokeRect(
+      isLineWidthEvenValue ? position.x : position.x + 0.5,
+      isLineWidthEvenValue ? position.y : position.y + 0.5,
+      size,
+      size,
+    )
   }
 
   private clear = () => {
@@ -157,6 +212,7 @@ export default class SquaresBoard {
           square.id === this.state.selectedSquareId
             ? this.options.selectedSquareStrokeColor
             : this.options.defaultSquareStrokeColor,
+          square.size,
         )
       })
 
