@@ -119,7 +119,7 @@ export default class SquaresBoard {
     })
   }
 
-  // square drag and drop
+  // drag and drop square
   private squareDraggingStart = (p: { square: SquareComponent; initialCursorPosition: { x: number; y: number } }) => {
     const initialSquarePosition = { ...p.square.position }
 
@@ -139,21 +139,6 @@ export default class SquaresBoard {
         size: p.square.size,
         position: { x: updatedX, y: updatedY },
       })
-
-      // makesSquareToStaysWithinCanvas
-      // const squareOuterBorder = this.options.squareBorderWidth / 2
-
-      // const minX = squareOuterBorder
-      // const minY = squareOuterBorder
-
-      // const maxX = this.options.canvasSize.width - p.square.size - squareOuterBorder
-      // const maxY = this.options.canvasSize.height - p.square.size - squareOuterBorder
-
-      // p.square.position = { x: updatedX, y: updatedY }
-      // p.square.position = {
-      //   x: utils.clamp(updatedX, minX, maxX),
-      //   y: utils.clamp(updatedY, minY, maxY),
-      // }
 
       this.render()
     }
@@ -269,20 +254,6 @@ export default class SquaresBoard {
     })
   }
 
-  private drawSquare = (position: { x: number; y: number }, borderColor: string, size: number) => {
-    this.ctx.lineWidth = this.options.squareBorderWidth
-    this.ctx.strokeStyle = borderColor
-
-    const isLineWidthEvenValue = this.options.squareBorderWidth % 2 === 0
-
-    this.ctx.strokeRect(
-      isLineWidthEvenValue ? position.x : position.x + 0.5,
-      isLineWidthEvenValue ? position.y : position.y + 0.5,
-      size,
-      size,
-    )
-  }
-
   private clear = () => {
     this.ctx.clearRect(0, 0, this.options.canvasSize.width, this.options.canvasSize.height)
   }
@@ -292,13 +263,15 @@ export default class SquaresBoard {
       this.clear()
 
       this.state.squares.forEach((square) => {
-        this.drawSquare(
-          square.position,
-          square.id === this.state.selectedSquareId
-            ? this.options.selectedSquareStrokeColor
-            : this.options.defaultSquareStrokeColor,
-          square.size,
-        )
+        square.draw(this.ctx, {
+          position: square.position,
+          size: square.size,
+          squareBorderWidth: this.options.squareBorderWidth,
+          borderColor:
+            square.id === this.state.selectedSquareId
+              ? this.options.selectedSquareStrokeColor
+              : this.options.defaultSquareStrokeColor,
+        })
       })
 
       this.publishStateChange()
