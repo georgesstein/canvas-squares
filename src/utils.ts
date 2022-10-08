@@ -7,3 +7,7 @@ export function getIsPointWithinSquareArea(p: {
 
   return x && y
 }
+
+export function clamp(num: number, min: number, max: number) {
+  return Math.min(Math.max(num, min), max)
+}

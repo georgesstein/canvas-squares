@@ -9,6 +9,8 @@ type Options = {
   canvasSize: { width: number; height: number }
   canvasOutlineStyle: string
   squareSize: number
+  minSquareSize: number
+  maxSquareSize: number
   squareBorderWidth: number
   defaultSquareStrokeColor: string
   selectedSquareStrokeColor: string
@@ -19,6 +21,8 @@ const DEFAULT_OPTIONS: Options = {
   canvasSize: { width: 500, height: 500 },
   canvasOutlineStyle: '1px dashed #000',
   squareSize: 50,
+  minSquareSize: 30,
+  maxSquareSize: 150,
   squareBorderWidth: 2,
   defaultSquareStrokeColor: 'black',
   selectedSquareStrokeColor: 'red',
@@ -34,6 +38,7 @@ export default class SquaresBoard {
   private ctx: CanvasRenderingContext2D
 
   private stateSubscribers: Set<(state: I.SquaresBoardState) => void> = new Set()
+  private onSquareDrag: null | ((e: MouseEvent) => void) = null
 
   constructor(
     rootEl: HTMLElement,
@@ -90,6 +95,7 @@ export default class SquaresBoard {
       this.resizeSquare({
         square: matchSquare.square,
         by: isIncrement ? this.options.resizeStepOfMouseWheel : this.options.resizeStepOfMouseWheel * -1,
+        squarePosition: matchSquare.square.position,
       })
     })
 
@@ -108,7 +114,61 @@ export default class SquaresBoard {
 
       if (isRightButtonClick) this.removeSquare(squareMatch.square.id)
       if (isLeftButtonClick) this.selectSquare(squareMatch.square.id)
+
+      this.squareDraggingStart({ square: squareMatch.square, initialCursorPosition: { x: e.x, y: e.y } })
     })
+  }
+
+  // square drag and drop
+  private squareDraggingStart = (p: { square: SquareComponent; initialCursorPosition: { x: number; y: number } }) => {
+    const initialSquarePosition = { ...p.square.position }
+
+    this.onSquareDrag = (e) => {
+      const changedCursorPosition = { x: e.x, y: e.y }
+
+      const diff = {
+        x: changedCursorPosition.x - p.initialCursorPosition.x,
+        y: changedCursorPosition.y - p.initialCursorPosition.y,
+      }
+
+      const updatedX = initialSquarePosition.x + diff.x
+      const updatedY = initialSquarePosition.y + diff.y
+
+      p.square.position = this.makesSquareToStaysWithinCanvas({
+        square: p.square,
+        size: p.square.size,
+        position: { x: updatedX, y: updatedY },
+      })
+
+      // makesSquareToStaysWithinCanvas
+      // const squareOuterBorder = this.options.squareBorderWidth / 2
+
+      // const minX = squareOuterBorder
+      // const minY = squareOuterBorder
+
+      // const maxX = this.options.canvasSize.width - p.square.size - squareOuterBorder
+      // const maxY = this.options.canvasSize.height - p.square.size - squareOuterBorder
+
+      // p.square.position = { x: updatedX, y: updatedY }
+      // p.square.position = {
+      //   x: utils.clamp(updatedX, minX, maxX),
+      //   y: utils.clamp(updatedY, minY, maxY),
+      // }
+
+      this.render()
+    }
+
+    document.addEventListener('mousemove', this.onSquareDrag)
+    document.addEventListener('mouseup', this.squareDraggingEnd)
+  }
+
+  private squareDraggingEnd = () => {
+    document.removeEventListener('mouseup', this.squareDraggingEnd)
+
+    if (this.onSquareDrag === null) return
+
+    document.removeEventListener('mousemove', this.onSquareDrag)
+    this.onSquareDrag = null
   }
 
   private mount = () => {
@@ -155,12 +215,18 @@ export default class SquaresBoard {
     this.render()
   }
 
-  private resizeSquare = (p: { square: SquareComponent; by: number }) => {
+  private resizeSquare = (p: { square: SquareComponent; by: number; squarePosition: { x: number; y: number } }) => {
     const updatedSize = p.square.size + p.by
 
-    // add min and max values to options
-    TODO: if (updatedSize <= 30 || updatedSize >= 150) return
-    if (this.canvasEl) p.square.size = updatedSize
+    if (updatedSize <= this.options.minSquareSize || updatedSize >= this.options.maxSquareSize) return
+
+    p.square.position = this.makesSquareToStaysWithinCanvas({
+      square: p.square,
+      size: updatedSize,
+      position: p.square.position,
+    })
+
+    p.square.size = updatedSize
 
     this.render()
   }
@@ -182,6 +248,25 @@ export default class SquaresBoard {
     }
 
     return null
+  }
+
+  private makesSquareToStaysWithinCanvas = (p: {
+    square: SquareComponent
+    size: number
+    position: { x: number; y: number }
+  }) => {
+    const squareOuterBorder = this.options.squareBorderWidth / 2
+
+    const minX = squareOuterBorder
+    const minY = squareOuterBorder
+
+    const maxX = this.options.canvasSize.width - p.size - squareOuterBorder
+    const maxY = this.options.canvasSize.height - p.size - squareOuterBorder
+
+    return (p.square.position = {
+      x: utils.clamp(p.position.x, minX, maxX),
+      y: utils.clamp(p.position.y, minY, maxY),
+    })
   }
 
   private drawSquare = (position: { x: number; y: number }, borderColor: string, size: number) => {
