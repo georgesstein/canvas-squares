@@ -1,5 +1,5 @@
 import * as I from './types'
-import { Struct, string, object, number, array, nullable } from 'superstruct'
+import { Struct, string, object, number, array, nullable, boolean } from 'superstruct'
 
 const squareId = (): Struct<I.SquareId, null> => string() as any
 
@@ -9,7 +9,13 @@ export const Square: Struct<I.SquareDTO> = object({
     x: number(),
     y: number(),
   }),
-  size: number()
+  size: number(),
+  sockets: object({
+    top: boolean(),
+    right: boolean(),
+    bottom: boolean(),
+    left: boolean(),
+  }),
 })
 
 export const LocalStorageState: Struct<I.LocalStorageState> = object({

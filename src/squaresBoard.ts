@@ -5,7 +5,7 @@ import * as utils from './utils'
 
 import * as I from './types'
 
-type Options = {
+type Options = Readonly<{
   canvasSize: { width: number; height: number }
   canvasOutlineStyle: string
   squareSize: number
@@ -15,9 +15,10 @@ type Options = {
   defaultSquareStrokeColor: string
   selectedSquareStrokeColor: string
   resizeStepOfMouseWheel: number
-}
+  socketRadius: number
+}>
 
-const DEFAULT_OPTIONS: Options = {
+export const DEFAULT_OPTIONS: Options = {
   canvasSize: { width: 500, height: 500 },
   canvasOutlineStyle: '1px dashed #000',
   squareSize: 50,
@@ -27,6 +28,7 @@ const DEFAULT_OPTIONS: Options = {
   defaultSquareStrokeColor: 'black',
   selectedSquareStrokeColor: 'red',
   resizeStepOfMouseWheel: 4,
+  socketRadius: 5,
 }
 
 export default class SquaresBoard {
@@ -49,7 +51,16 @@ export default class SquaresBoard {
 
     const squares: Map<I.SquareId, SquareComponent> = new Map()
 
-    initialState.squares.forEach((x) => squares.set(x.id, new SquareComponent(x)))
+    initialState.squares.forEach((square) =>
+      squares.set(
+        square.id,
+        new SquareComponent(square, {
+          socketRadius: this.options.socketRadius,
+          borderWidth: this.options.squareBorderWidth,
+          canvasSize: this.options.canvasSize,
+        }),
+      ),
+    )
 
     this.state = { ...initialState, squares }
 
@@ -81,11 +92,46 @@ export default class SquaresBoard {
       this.addSquare(cursorPosition)
     })
 
+    // select square
+    // delete square
+    this.canvasEl.addEventListener('mousedown', (e) => {
+      const isLeftButtonClick = e.buttons === 1
+      const isRightButtonClick = e.buttons === 2
+      const cursorPosition = { x: e.offsetX, y: e.offsetY }
+      const squareMatch = this.findSquareByPosition(cursorPosition)
+
+      if (squareMatch === null) {
+        this.unselectSquare()
+        return null
+      }
+
+      const foundSocket = squareMatch.foundSocket
+
+      if (foundSocket) {
+        if (isLeftButtonClick) {
+          foundSocket.enabled = true
+          return this.render()
+        }
+
+        if (isRightButtonClick) {
+          if (foundSocket.enabled === true) {
+            foundSocket.enabled = false
+            return this.render()
+          }
+        }
+      }
+
+      if (isLeftButtonClick) this.selectSquare(squareMatch.square.id)
+      if (isRightButtonClick) this.removeSquare(squareMatch.square.id)
+
+      this.squareDraggingStart({ square: squareMatch.square, initialCursorPosition: { x: e.x, y: e.y } })
+    })
+
     // resize selected square
     this.canvasEl.addEventListener('wheel', (e) => {
       if (this.state.selectedSquareId === null) return
 
-      const matchSquare = this.findSquareByPosition({ x: e.offsetX, y: e.offsetY })
+      const matchSquare = this.findSquareByPosition({ x: e.offsetX, y: e.offsetY, shouldBeSelected: true })
 
       if (matchSquare === null) return
       if (matchSquare.square.id !== this.state.selectedSquareId) return
@@ -97,25 +143,6 @@ export default class SquaresBoard {
         by: isIncrement ? this.options.resizeStepOfMouseWheel : this.options.resizeStepOfMouseWheel * -1,
         squarePosition: matchSquare.square.position,
       })
-    })
-
-    // delete square
-    // select square
-    this.canvasEl.addEventListener('mousedown', (e) => {
-      const isRightButtonClick = e.buttons === 2
-      const isLeftButtonClick = e.buttons === 1
-      const cursorPosition = { x: e.offsetX, y: e.offsetY }
-      const squareMatch = this.findSquareByPosition(cursorPosition)
-
-      if (squareMatch === null) {
-        this.unselectSquare()
-        return null
-      }
-
-      if (isRightButtonClick) this.removeSquare(squareMatch.square.id)
-      if (isLeftButtonClick) this.selectSquare(squareMatch.square.id)
-
-      this.squareDraggingStart({ square: squareMatch.square, initialCursorPosition: { x: e.x, y: e.y } })
     })
   }
 
@@ -134,10 +161,11 @@ export default class SquaresBoard {
       const updatedX = initialSquarePosition.x + diff.x
       const updatedY = initialSquarePosition.y + diff.y
 
-      p.square.position = this.makesSquareToStaysWithinCanvas({
+      p.square.position = p.square.updatePosition({
         square: p.square,
         size: p.square.size,
         position: { x: updatedX, y: updatedY },
+        socketRadius: this.options.socketRadius,
       })
 
       this.render()
@@ -156,26 +184,25 @@ export default class SquaresBoard {
     this.onSquareDrag = null
   }
 
-  private mount = () => {
-    this.canvasEl.setAttribute('width', this.options.canvasSize.width.toString())
-    this.canvasEl.setAttribute('height', this.options.canvasSize.height.toString())
-    this.canvasEl.style.outline = this.options.canvasOutlineStyle
-
-    this.canvasEl.oncontextmenu = () => false
-
-    this.rootEl.append(this.canvasEl)
-
-    this.clear()
-    this.render()
-    this.addEventListeners()
-  }
-
   private addSquare = (position: { x: number; y: number }) => {
-    const square = new SquareComponent({
-      id: cuid() as I.SquareId,
-      position: position,
-      size: this.options.squareSize,
-    })
+    const square = new SquareComponent(
+      {
+        id: cuid() as I.SquareId,
+        position: position,
+        size: this.options.squareSize,
+        sockets: {
+          top: false,
+          right: false,
+          bottom: false,
+          left: false,
+        },
+      },
+      {
+        socketRadius: this.options.socketRadius,
+        borderWidth: this.options.squareBorderWidth,
+        canvasSize: this.options.canvasSize,
+      },
+    )
 
     this.state.squares.set(square.id, square)
     this.render()
@@ -205,10 +232,11 @@ export default class SquaresBoard {
 
     if (updatedSize <= this.options.minSquareSize || updatedSize >= this.options.maxSquareSize) return
 
-    p.square.position = this.makesSquareToStaysWithinCanvas({
+    p.square.position = p.square.updatePosition({
       square: p.square,
       size: updatedSize,
       position: p.square.position,
+      socketRadius: this.options.socketRadius,
     })
 
     p.square.size = updatedSize
@@ -216,11 +244,33 @@ export default class SquaresBoard {
     this.render()
   }
 
-  private findSquareByPosition = (p: { x: number; y: number }): { square: SquareComponent } | null => {
+  private findSquareByPosition = (p: {
+    x: number
+    y: number
+    shouldBeSelected?: boolean
+  }): { square: SquareComponent; foundSocket?: I.Socket } | null => {
     const squares = [...this.state.squares.values()]
+
+    if (p.shouldBeSelected && this.state.selectedSquareId === null) return null
 
     for (let i = squares.length - 1; i >= 0; i--) {
       const square = squares[i]
+
+      for (const key in square.sockets) {
+        const alignmentKey = key as I.SocketAlignment
+        const socket = square.sockets[alignmentKey] as I.Socket
+        const socketPosition = socket.position
+        const radius = this.options.socketRadius
+
+        const isSocketClicked = utils.getIsPointWithinSquareArea({
+          point: { ...p },
+          square: { x: socketPosition.x - radius, y: socketPosition.y - radius, size: radius * 2 },
+        })
+
+        if (isSocketClicked) {
+          return { square, foundSocket: socket }
+        }
+      }
 
       const isClickWithinSquareArea = utils.getIsPointWithinSquareArea({
         point: { ...p },
@@ -235,23 +285,18 @@ export default class SquaresBoard {
     return null
   }
 
-  private makesSquareToStaysWithinCanvas = (p: {
-    square: SquareComponent
-    size: number
-    position: { x: number; y: number }
-  }) => {
-    const squareOuterBorder = this.options.squareBorderWidth / 2
+  private mount = () => {
+    this.canvasEl.setAttribute('width', this.options.canvasSize.width.toString())
+    this.canvasEl.setAttribute('height', this.options.canvasSize.height.toString())
+    this.canvasEl.style.outline = this.options.canvasOutlineStyle
 
-    const minX = squareOuterBorder
-    const minY = squareOuterBorder
+    this.canvasEl.oncontextmenu = () => false
 
-    const maxX = this.options.canvasSize.width - p.size - squareOuterBorder
-    const maxY = this.options.canvasSize.height - p.size - squareOuterBorder
+    this.rootEl.append(this.canvasEl)
 
-    return (p.square.position = {
-      x: utils.clamp(p.position.x, minX, maxX),
-      y: utils.clamp(p.position.y, minY, maxY),
-    })
+    this.clear()
+    this.render()
+    this.addEventListeners()
   }
 
   private clear = () => {
@@ -267,10 +312,12 @@ export default class SquaresBoard {
           position: square.position,
           size: square.size,
           squareBorderWidth: this.options.squareBorderWidth,
-          borderColor:
+          initialStrokeColor:
             square.id === this.state.selectedSquareId
               ? this.options.selectedSquareStrokeColor
               : this.options.defaultSquareStrokeColor,
+          isSquareSelected: square.id === this.state.selectedSquareId,
+          selectedStrokeColor: this.options.selectedSquareStrokeColor,
         })
       })
 

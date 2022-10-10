@@ -26,7 +26,7 @@ export default abstract class CanvasSquaresLocalStorage {
     const squares: I.LocalStorageState['squares'] = []
 
     state.squares.forEach((square) => {
-      squares.push({ id: square.id, position: square.position, size: square.size })
+      squares.push(square.toJSON())
     })
 
     const localStorageState: I.LocalStorageState = {
