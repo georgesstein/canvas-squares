@@ -31,7 +31,8 @@ export default abstract class CanvasSquaresLocalStorage {
 
     const localStorageState: I.LocalStorageState = {
       selectedSquareId: state.selectedSquareId,
-      squares
+      squares,
+      arrows: [...state.arrows.values()].map(x => x.toJSON())
     }
 
     const encoded = JSON.stringify(localStorageState)
