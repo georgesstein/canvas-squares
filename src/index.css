@@ -18,6 +18,7 @@ body {
   width: 500px;
   height: 500px;
   display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
@@ -25,6 +26,17 @@ body {
   font-size: 18px;
 }
 
-li:not(:last-child) {
-  margin-bottom: 20px;
+li {
+  margin-bottom: 18px;
+}
+
+hr {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #000;
+  margin-bottom: 10px;
+}
+
+i {
+  align-self: flex-start;
 }
