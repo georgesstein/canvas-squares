@@ -1,4 +1,5 @@
 import * as I from './types'
+import * as utils from './utils'
 
 export default class ConnectionArrowComponent {
   id: I.ConnectionArrowId
@@ -11,14 +12,71 @@ export default class ConnectionArrowComponent {
     this.to = p.to
   }
 
-  draw = (ctx: CanvasRenderingContext2D, color: string) => {
-    ctx.beginPath()
-    ctx.strokeStyle = color
-    ctx.moveTo(this.from.socket.position.x, this.from.socket.position.y)
-    ctx.lineTo(this.to.socket.position.x, this.to.socket.position.y)
-    ctx.stroke()
+  draw = (ctx: CanvasRenderingContext2D, p: { socketRadius: number; borderWidth: number; color: string }) => {
+    const spacing = p.socketRadius + p.borderWidth + 1
+    ctx.strokeStyle = p.color
+
+    const from = { x: this.from.socket.position.x, y: this.from.socket.position.y }
+    const to = { x: this.to.socket.position.x, y: this.to.socket.position.y }
+
+    const diff = {
+      x: Math.abs(to.x - from.x),
+      y: Math.abs(to.y - from.y),
+    }
+
+    if (diff.x > diff.y) {
+      const halfwayX = (from.x + to.x) / 2
+
+      utils.drawLine(ctx, {
+        from: { x: from.x > to.x ? from.x - spacing : from.x + spacing, y: from.y },
+        to: { x: halfwayX, y: from.y },
+      })
+      utils.drawLine(ctx, { from: { x: halfwayX, y: from.y }, to: { x: halfwayX, y: to.y } })
+      utils.drawLine(ctx, {
+        from: { x: halfwayX, y: to.y },
+        to: { x: to.x > from.x ? to.x - spacing : to.x + spacing, y: to.y },
+      })
+
+      // draw arrowhead
+      if (from.x > to.x) {
+        utils.drawArrowhead(ctx, {
+          from: { x: to.x + 10 + spacing, y: to.y },
+          to: { x: to.x + spacing, y: to.y },
+        })
+      } else {
+        utils.drawArrowhead(ctx, {
+          from: { x: to.x - 10 - spacing, y: to.y },
+          to: { x: to.x - spacing, y: to.y },
+        })
+      }
+    } else {
+      const halfwayY = (from.y + to.y) / 2
+
+      utils.drawLine(ctx, {
+        from: { x: from.x, y: from.y > to.y ? from.y - spacing : from.y + spacing },
+        to: { x: from.x, y: halfwayY },
+      })
+      utils.drawLine(ctx, { from: { x: from.x, y: halfwayY }, to: { x: to.x, y: halfwayY } })
+      utils.drawLine(ctx, {
+        from: { x: to.x, y: halfwayY },
+        to: { x: to.x, y: to.y > from.y ? to.y - spacing : to.y + spacing },
+      })
+
+      // draw arrowhead
+      if (from.y > to.y) {
+        utils.drawArrowhead(ctx, {
+          from: { x: to.x, y: to.y + 10 + spacing },
+          to: { x: to.x, y: to.y + spacing },
+        })
+      } else {
+        utils.drawArrowhead(ctx, {
+          from: { x: to.x, y: to.y - 10 - spacing },
+          to: { x: to.x, y: to.y - spacing },
+        })
+      }
+    }
   }
-  
+
   toJSON = (): I.ConnectionArrowDTO => {
     return {
       id: this.id,
