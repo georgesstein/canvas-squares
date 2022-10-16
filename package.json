@@ -1,5 +1,5 @@
 {
-  "name": "artificial-life",
+  "name": "canvas-squares",
   "version": "0.0.1",
   "description": "",
   "main": "src/index.ts",
