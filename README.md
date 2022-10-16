@@ -1,24 +1,24 @@
-# Clone project
+## Clone project
 ```
 git clone git@github.com:georgesstein/canvas-squares.git canvas-squares
 ```
 
-# Change current directory to project directory
+## Change current directory to project directory
 ```
 cd canvas-squares
 ```
 
-# Before checking install dependencies at project root
+## Before checking install dependencies at project root
 ```
 npm install
 ```
 
-# Check
+## Check
 ```
 npm start
 ```
 
-# For development
+## For development
 First run the watcher:
 ```
 npm run watch
