@@ -13,7 +13,7 @@ cd canvas-squares
 npm install
 ```
 
-## Check
+## Run application
 First run the watcher:
 ```
 npm run watch
