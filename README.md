@@ -14,11 +14,6 @@ npm install
 ```
 
 ## Check
-```
-npm start
-```
-
-## For development
 First run the watcher:
 ```
 npm run watch
