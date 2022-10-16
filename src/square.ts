@@ -40,7 +40,6 @@ export default class SquareComponent {
       squareBorderWidth: number
       isSquareSelected: boolean
       initialStrokeColor: string
-      selectedStrokeColor: string
     },
   ) => {
     ctx.lineWidth = options.squareBorderWidth
@@ -73,7 +72,7 @@ export default class SquareComponent {
           position: socketPositions[socketAlignmentKey],
           socketRadius: this.socketRadius,
           shouldFill: socket.enabled,
-          color: options.isSquareSelected ? options.selectedStrokeColor : options.initialStrokeColor,
+          color: options.initialStrokeColor,
         })
       }
     }
@@ -137,7 +136,9 @@ export default class SquareComponent {
     position: { x: number; y: number }
     socketRadius: number
   }) => {
-    const squareOuterBorder = this.borderWidth / 2
+    const isLineWidthEvenValue = this.borderWidth % 2 === 0
+
+    const squareOuterBorder = isLineWidthEvenValue ? this.borderWidth / 2 : this.borderWidth / 2 + 0.5
     const socketDiameter = p.socketRadius * 2
 
     const minX = squareOuterBorder + socketDiameter

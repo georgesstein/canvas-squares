@@ -1,0 +1,30 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  width: 100vw;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  column-gap: 50px;
+}
+
+.guide-container {
+  width: 500px;
+  height: 500px;
+  display: flex;
+  align-items: center;
+}
+
+.guide-list {
+  font-size: 18px;
+}
+
+li:not(:last-child) {
+  margin-bottom: 20px;
+}

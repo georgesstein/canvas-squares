@@ -126,8 +126,7 @@ export default class SquaresBoard {
       this.addSquare(cursorPosition)
     })
 
-    // select square
-    // delete square
+    // select/unselect/remove square
     this.canvasEl.addEventListener('mousedown', (e) => {
       const isLeftButtonClick = e.buttons === 1
       const isRightButtonClick = e.buttons === 2
@@ -145,13 +144,14 @@ export default class SquaresBoard {
 
       if (squareMatch === null) {
         this.unselectSquare()
+        this.render()
         return null
       }
 
       if (squareMatch.square.id !== this.state.selectedSquareId) {
         this.unselectSquare()
+        this.render()
       }
-
 
       const foundSocket = squareMatch.foundSocket
 
@@ -159,7 +159,7 @@ export default class SquaresBoard {
         this.removeSquare(squareMatch.square.id)
       }
 
-      // enable/disable socket
+      // enable socket or disable socket and arrows on it (if exist)
       if (foundSocket && squareMatch.square.id === this.state.selectedSquareId) {
         if (isLeftButtonClick) {
           foundSocket.enabled = true
@@ -168,7 +168,16 @@ export default class SquaresBoard {
 
         if (isRightButtonClick) {
           if (foundSocket.enabled === true) {
+            const arrows = [...this.state.arrows.values()]
+
+            arrows.map((x) => {
+              if (x.from.socket === foundSocket || x.to.socket === foundSocket) {
+                this.removeArrow(x.id)
+              }
+            })
+
             foundSocket.enabled = false
+
             return this.render()
           }
         }
@@ -189,6 +198,7 @@ export default class SquaresBoard {
               this.canvasEl.removeEventListener('mousemove', this.onConnectionArrowDrag.mouseMoveEventListener)
               this.onConnectionArrowDrag = null
 
+              this.render()
               return
             }
 
@@ -203,10 +213,10 @@ export default class SquaresBoard {
                 const socketPosition = foundSocket.position
 
                 this.render(() => {
-                  this.ctx.beginPath()
-                  this.ctx.moveTo(socketPosition.x, socketPosition.y)
-                  this.ctx.lineTo(cursorPosition.x, cursorPosition.y)
-                  this.ctx.stroke()
+                  utils.drawLine(this.ctx, {
+                    from: socketPosition,
+                    to: cursorPosition,
+                  })
                 })
               },
             }
@@ -279,8 +289,8 @@ export default class SquaresBoard {
 
   private addArrow = (from: I.ConnectionEnd, to: I.ConnectionEnd) => {
     const arrow = new ConnectionArrowComponent({ id: cuid() as I.ConnectionArrowId, from, to })
-
     this.state.arrows.set(arrow.id, arrow)
+    this.render()
   }
 
   private removeArrow = (arrow: I.ConnectionArrowId) => {
@@ -425,6 +435,14 @@ export default class SquaresBoard {
     window.requestAnimationFrame(() => {
       this.clear()
 
+      this.state.arrows.forEach((arrow) => {
+        arrow.draw(this.ctx, {
+          socketRadius: this.options.socketRadius,
+          borderWidth: this.options.squareBorderWidth,
+          color: this.options.defaultSquareStrokeColor,
+        })
+      })
+
       this.state.squares.forEach((square) => {
         square.draw(this.ctx, {
           position: square.position,
@@ -435,12 +453,7 @@ export default class SquaresBoard {
               ? this.options.selectedSquareStrokeColor
               : this.options.defaultSquareStrokeColor,
           isSquareSelected: square.id === this.state.selectedSquareId,
-          selectedStrokeColor: this.options.selectedSquareStrokeColor,
         })
-      })
-
-      this.state.arrows.forEach((arrow) => {
-        arrow.draw(this.ctx, this.options.defaultSquareStrokeColor)
       })
 
       if (callback) callback()
