@@ -1,5 +1,6 @@
 # Clone project
 ```
+git clone git@github.com:georgesstein/canvas-squares.git canvas-squares
 ```
 
 # Before checking install dependencies at project root
